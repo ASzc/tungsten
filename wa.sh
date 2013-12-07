@@ -69,6 +69,7 @@ else
 
         echo "$API_KEY" > "$key_path"
         error "Key stored in '$key_path' for future use"
+        error ""
 
     else
         error "Cannot query without a WolframAlpha API key. Write the key to '$key_path'"
@@ -106,9 +107,9 @@ xpath () {
 }
 
 # Handle error results
-if [[ "$(xpath '/queryresult/@error')" =~ true ]]
+if [ "$(xpath 'string(/queryresult/@error)')" = "true" ]
 then
-    error_msg="$(xpath '/queryresult/error/msg' | sed -e 's/<[^>]*>//g')"
+    error_msg="$(xpath '/queryresult/error/msg/text()')"
 
     if [ "$error_msg" = "Invalid appid" ]
     then
@@ -121,7 +122,26 @@ then
     fi
 fi
 
-# TODO unravel the following
+# Only colourise if stdout is a terminal
+if [ -t 1 ]
+then
+    titleformat='\e[1;34m%s\e[m\n'
+else
+    titleformat='%s\n'
+fi
+
+# Print title+plaintext for each pod with text in it's subpod/plaintext child
+xpath '/queryresult/pod[subpod/plaintext/text()]/@title' | sed -r -e 's/title="([^"]*)"/\1\n/g' | while read -r title
+do
+    text="$(xpath "/queryresult/pod[@title='$title']/subpod/plaintext/text()")"
+
+    printf "$titleformat" "$title"
+    echo "$text"
+done
+
+# TODO preserve newlines in text() ^^^
+
+# TODO delete the following once the new impl. matches
 
 result=`echo "${result}" \
     | tr '\n' '\t' \

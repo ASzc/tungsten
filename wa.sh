@@ -102,14 +102,14 @@ result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
 # Process the result of the query
 #
 
-xpath () {
-    echo "$result" | xmllint --xpath "$1" -
+xpath_value () {
+    echo "$result" | xmlstarlet sel -t -v "$1" -n -
 }
 
 # Handle error results
-if [ "$(xpath 'string(/queryresult/@error)')" = "true" ]
+if [ "$(xpath_value '/queryresult/@error')" = "true" ]
 then
-    error_msg="$(xpath '/queryresult/error/msg/text()')"
+    error_msg="$(xpath_value '/queryresult/error/msg')"
 
     if [ "$error_msg" = "Invalid appid" ]
     then
@@ -130,27 +130,19 @@ else
     titleformat='%s\n'
 fi
 
-# Avoiding using string(x) and x/text() for the values in the following code to allow for keeping the values seperate (xmllint spits them out as one big line, without seperators)
-
 # Print title+plaintext for each pod with text in it's subpod/plaintext child
-xpath '/queryresult/pod[subpod/plaintext/text()]/@title' | \
-sed -r -e 's/title="([^"]*)"/\1\n/g' | \
+xpath_value '/queryresult/pod[subpod/plaintext/text()]/@title' | \
 while read -r title
 do
     printf "$titleformat" "$title"
 
     # Process the >0 plaintext elements decendent of the current pod
-    xpath "/queryresult/pod[@title='$title']/subpod/plaintext" | \
-    # Work around lack of non-greedy modifier in sed
-    sed -e 's,<plaintext>,\t,g' -e 's,</plaintext>,\t,g' | \
-    sed -r -e 's,\t([^\t]*)\t,\1\n,g' | \
+    xpath_value "/queryresult/pod[@title='$title']/subpod/plaintext" | \
     while read -r text
     do
         echo "$text"
     done
 done
-
-# TODO fix conversion of utf-8 chars to numerical codes (xmllint limitation?) ^^^
 
 # TODO delete the following once the new impl. matches
 

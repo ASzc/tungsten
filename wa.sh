@@ -143,22 +143,3 @@ do
         echo "$text"
     done
 done
-
-# TODO delete the following once the new impl. matches
-
-result=`echo "${result}" \
-    | tr '\n' '\t' \
-    | sed -e 's/<plaintext>/\'$'\n<plaintext>/g' \
-    | grep -oE "<plaintext>.*</plaintext>|<pod title=.[^\']*" \
-    | sed 's!<plaintext>!!g; \
-        s!</plaintext>!!g; \
-        s!<pod title=.*!\\\x1b[1;36m&\\\x1b[0m!g; \
-        s!<pod title=.!!g; \
-        s!\&amp;!\&!' \
-    | tr '\t' '\n' \
-    | sed  '/^$/d; \
-        s/\ \ */\ /g'`
-
-
-# print result
-echo -e "${result}"

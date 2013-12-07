@@ -1,0 +1,17 @@
+# Maintainer: Alex Szczuczko <alex@szc.ca>
+
+pkgname=tungsten
+pkgver=1.0
+pkgrel=1
+pkgdesc="A WolframAlpha CLI"
+arch=('any')
+url="https://github.com/ASzc/$pkgname"
+license=('GPL3')
+depends=('curl' 'xmlstarlet' 'bash')
+source=("https://github.com/ASzc/$pkgname/raw/release-$pkgver/$pkgname.sh")
+sha256sums=('6f8042be9e07e35392833b5ddae59d7282439b3cccb89b46cd05c854ff96946a')
+
+package() {
+    cd "$srcdir"
+    install -Dm755 "$pkgname.sh" "$pkgdir/usr/bin/$pkgname"
+}

@@ -130,16 +130,27 @@ else
     titleformat='%s\n'
 fi
 
-# Print title+plaintext for each pod with text in it's subpod/plaintext child
-xpath '/queryresult/pod[subpod/plaintext/text()]/@title' | sed -r -e 's/title="([^"]*)"/\1\n/g' | while read -r title
-do
-    text="$(xpath "/queryresult/pod[@title='$title']/subpod/plaintext/text()")"
+# Avoiding using string(x) and x/text() for the values in the following code to allow for keeping the values seperate (xmllint spits them out as one big line, without seperators)
 
+# Print title+plaintext for each pod with text in it's subpod/plaintext child
+xpath '/queryresult/pod[subpod/plaintext/text()]/@title' | \
+sed -r -e 's/title="([^"]*)"/\1\n/g' | \
+while read -r title
+do
     printf "$titleformat" "$title"
-    echo "$text"
+
+    # Process the >0 plaintext elements decendent of the current pod
+    xpath "/queryresult/pod[@title='$title']/subpod/plaintext" | \
+    # Work around lack of non-greedy modifier in sed
+    sed -e 's,<plaintext>,\t,g' -e 's,</plaintext>,\t,g' | \
+    sed -r -e 's,\t([^\t]*)\t,\1\n,g' | \
+    while read -r text
+    do
+        echo "$text"
+    done
 done
 
-# TODO preserve newlines in text() ^^^
+# TODO fix conversion of utf-8 chars to numerical codes (xmllint limitation?) ^^^
 
 # TODO delete the following once the new impl. matches
 

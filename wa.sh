@@ -54,8 +54,9 @@ then
     exit 3
 
 else
-    # Only prompt if the shell is interactive
-    if [ -v PS1 ]
+    # Only prompt if interacting with a terminal directly
+    # stdin and stderr count, we aren't using stdout for the prompt here
+    if [ -t 0 ] && [ -t 2 ]
     then
         error "Cannot query without a WolframAlpha API key"
         error "Get one at https://developer.wolframalpha.com/portal/apisignup.html"
@@ -79,7 +80,13 @@ fi
 # Read the query
 #
 
-query="${@?You must specify a query to make}"
+query="${@:-}"
+
+if [ -z "$query" ]
+then
+    error "You must specify a query to make"
+    exit 5
+fi
 
 #
 # Perform the query
@@ -94,13 +101,27 @@ result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
 # Process the result of the query
 #
 
-if [[ "$result" =~ Invalid appid ]]
+xpath () {
+    echo "$result" | xmllint --xpath "$1" -
+}
+
+# Handle error results
+if [[ "$(xpath '/queryresult/@error')" =~ true ]]
 then
-    error "WolframAlpha API has rejected the given API key"
-    error "Modify or remove the key stored in file '$key_path'"
-    exit 5
+    error_msg="$(xpath '/queryresult/error/msg' | sed -e 's/<[^>]*>//g')"
+
+    if [ "$error_msg" = "Invalid appid" ]
+    then
+        error "WolframAlpha API rejected the given API key"
+        error "Modify or remove the key stored in file '$key_path'"
+        exit 6
+    else
+        error "WolframAlpha API returned an error: $error_msg"
+        exit 7
+    fi
 fi
 
+# TODO unravel the following
 
 result=`echo "${result}" \
     | tr '\n' '\t' \

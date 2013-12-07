@@ -137,9 +137,5 @@ do
     printf "$titleformat" "$title"
 
     # Process the >0 plaintext elements decendent of the current pod
-    xpath_value "/queryresult/pod[@title='$title']/subpod/plaintext" | \
-    while read -r text
-    do
-        echo "$text"
-    done
+    xpath_value "/queryresult/pod[@title='$title']/subpod/plaintext"
 done

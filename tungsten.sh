@@ -60,6 +60,7 @@ else
     then
         error "Cannot query without a WolframAlpha API key"
         error "Get one at https://developer.wolframalpha.com/portal/apisignup.html"
+        error "It can take a few minutes or hours to recieve your key"
 
         API_KEY=""
         while ! [[ "$API_KEY" =~ $key_pattern ]]

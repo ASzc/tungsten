@@ -104,7 +104,10 @@ result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
 #
 
 xpath_value () {
-    echo "$result" | xmlstarlet sel -t -v "$1" -n - | xmlstarlet unesc -
+    echo "$result" | \
+    xmlstarlet sel -t -v "$1" -n - | \
+    xmlstarlet unesc - | \
+    sed -r 's/+/=/g'
 }
 
 # Handle error results

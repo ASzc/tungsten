@@ -107,7 +107,7 @@ xpath_value () {
     echo "$result" | \
     xmlstarlet sel -t -v "$1" -n - | \
     xmlstarlet unesc - | \
-    sed -r 's/+/=/g'
+    sed -E 's/+/=/g'
 }
 
 # Handle error results

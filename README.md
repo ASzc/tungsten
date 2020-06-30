@@ -8,8 +8,6 @@ Derived from `wa.sh` by [saironiq](https://github.com/saironiq/shellscripts/tree
 
 ## How To Use
 
-You must get your own [API Key](https://developer.wolframalpha.com/portal/apisignup.html) (called AppID on WolframAlpha) from WolframAlpha before use. It can take a few minutes or hours to get your API key once you apply for it.
-
 Simply type the query as you would at [WolframAlpha.com](https://wolframalpha.com), examples:
 
     tungsten "P=NP"

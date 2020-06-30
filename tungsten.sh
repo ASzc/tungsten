@@ -32,53 +32,6 @@ error () {
 }
 
 #
-# Load stored API key
-#
-
-key_path="$HOME/.wolfram_api_key"
-key_pattern='[A-Z0-9]{6}-[A-Z0-9]{10}'
-
-if [ -f "$key_path" ]
-then
-    # Load the contents of $key_path file as API_KEY
-    API_KEY="$(<"$key_path")"
-    if ! [[ "$API_KEY" =~ $key_pattern ]]
-    then
-        error "WolframAlpha API key read from file '$key_path' doesn't match the validation pattern"
-        exit 2
-    fi
-
-elif [ -e "$key_path" ]
-then
-    error "WolframAlpha API key path '$key_path' exists, but isn't a file."
-    exit 3
-
-else
-    # Only prompt if interacting with a terminal directly
-    # stdin and stderr count, we aren't using stdout for the prompt here
-    if [ -t 0 ] && [ -t 2 ]
-    then
-        error "Cannot query without a WolframAlpha API key"
-        error "Get one at https://developer.wolframalpha.com/portal/apisignup.html"
-        error "It can take a few minutes or hours to recieve your key"
-
-        API_KEY=""
-        while ! [[ "$API_KEY" =~ $key_pattern ]]
-        do
-            read -r -p "Enter an API key in the form '$key_pattern': " API_KEY
-        done
-
-        echo "$API_KEY" > "$key_path"
-        error "Key stored in '$key_path' for future use"
-        error ""
-
-    else
-        error "Cannot query without a WolframAlpha API key. Write the key to '$key_path'"
-        exit 4
-    fi
-fi
-
-#
 # Read the query
 #
 
@@ -94,10 +47,12 @@ fi
 # Perform the query
 #
 
-result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
-                      --data-urlencode "format=plaintext" \
-                      --data-urlencode "input=$query" \
-                      "https://api.wolframalpha.com/v2/query")"
+result="$(curl -sS -G --data-urlencode "format=plaintext" \
+	              --data-urlencode "output=XML" \
+		      --data-urlencode "type=full" \
+		      --data-urlencode "input=$query" \
+		      --header "referer: https://products.wolframalpha.com/api/explorer/" \
+                      "https://www.wolframalpha.com/input/apiExplorer.jsp" | iconv -f latin1 -t UTF-8)"
 
 #
 # Process the result of the query

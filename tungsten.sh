@@ -2,7 +2,7 @@
 
 #
 # Copyright 2012 Sairon Istyar
-# Copyright 2013-2017 Alex Szczuczko
+# Copyright 2013-2020 Alex Szczuczko
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,10 +22,7 @@
 # Setup
 #
 
-# Stop if an error is encountered
-set -e
-# Stop if an undefined variable is referenced
-set -u
+set -euo pipefail
 
 error () {
     echo "$@" >&2
@@ -38,25 +35,26 @@ error () {
 key_path="$HOME/.wolfram_api_key"
 key_pattern='[A-Z0-9]{6}-[A-Z0-9]{10}'
 
-if [ -f "$key_path" ]
+if ! [ -v WOLFRAM_API_KEY ]
 then
-    # Load the contents of $key_path file as API_KEY
-    API_KEY="$(<"$key_path")"
-    if ! [[ "$API_KEY" =~ $key_pattern ]]
+    if [ -f "$key_path" ]
     then
-        error "WolframAlpha API key read from file '$key_path' doesn't match the validation pattern"
-        exit 2
+        # Load the contents of $key_path file as WOLFRAM_API_KEY
+        WOLFRAM_API_KEY="$(<"$key_path")"
+        if ! [[ "$WOLFRAM_API_KEY" =~ $key_pattern ]]
+        then
+            error "WolframAlpha API key read from file '$key_path' doesn't match the validation pattern"
+            exit 2
+        fi
+
+    elif [ -e "$key_path" ]
+    then
+        error "WolframAlpha API key path '$key_path' exists, but isn't a file."
+        exit 3
+
+    else
+        WOLFRAM_API_KEY=""
     fi
-
-elif [ -e "$key_path" ]
-then
-    error "WolframAlpha API key path '$key_path' exists, but isn't a file."
-    exit 3
-
-else
-    error "Querying without an API key. There may be incorrect / missing characters."
-    error "To query with an API key, add the key to $key_path as mentioned in the README"
-    API_KEY=""
 fi
 
 #
@@ -73,36 +71,45 @@ fi
 
 #
 # Perform the query
-if [[ -n "$API_KEY" ]]
+#
+curl_args=(
+    -sSf -G
+    --data-urlencode "output=JSON"
+    --data-urlencode "format=plaintext"
+    --data-urlencode "input=$query"
+)
+if [ -n "$WOLFRAM_API_KEY" ]
 then
-    result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
-                          --data-urlencode "format=plaintext" \
-                          --data-urlencode "input=$query" \
-                          "https://api.wolframalpha.com/v2/query")"
+    curl_args+=(
+        --data-urlencode "appid=$WOLFRAM_API_KEY"
+        "https://api.wolframalpha.com/v2/query"
+    )
+    iconv_from="UTF-8"
 else
-    result="$(curl -sS -G --data-urlencode "format=plaintext" \
-                          --data-urlencode "output=XML" \
-                          --data-urlencode "type=full" \
-                          --data-urlencode "input=$query" \
-                          --header "referer: https://products.wolframalpha.com/api/explorer/" \
-                          "https://www.wolframalpha.com/input/apiExplorer.jsp" | iconv -f latin1 -t UTF-8)"
+    error "Querying without an API key. There may be incorrect / missing characters."
+    error "To query with an API key, add the key to $key_path as described in the README"
+    curl_args+=(
+        --data-urlencode "type=full"
+        -e "https://products.wolframalpha.com/api/explorer/"
+        "https://www.wolframalpha.com/input/apiExplorer.jsp"
+    )
+    iconv_from="ISO-8859-1"
 fi
+result="$(curl "${curl_args[@]}" | iconv -f "$iconv_from" -t UTF-8)"
 
 #
 # Process the result of the query
 #
 
-xpath_value () {
-    echo "$result" | \
-    xmlstarlet sel -t -v "$1" -n - | \
-    xmlstarlet unesc - | \
-    sed -r 's/+/=/g'
+query_result () {
+    set -euo pipefail
+    jq -r "$1" <<<"$result"
 }
 
 # Handle error results
-if [ "$(xpath_value '/queryresult/@error')" = "true" ]
+if [ "$(query_result '.queryresult.error')" != "false" ]
 then
-    error_msg="$(xpath_value '/queryresult/error/msg')"
+    error_msg="$(query_result '.queryresult.error.msg')"
 
     if [ "$error_msg" = "Invalid appid" ]
     then
@@ -124,11 +131,10 @@ else
 fi
 
 # Print title+plaintext for each pod with text in it's subpod/plaintext child
-xpath_value '/queryresult/pod[subpod/plaintext/text()]/@title' | \
 while read -r title
 do
     printf "$titleformat" "$title"
 
     # Process the >0 plaintext elements decendent of the current pod
-    xpath_value "/queryresult/pod[@title='$title']/subpod/plaintext"
-done
+    query_result ".queryresult.pods[] | select(.title == \"$title\") | .subpods[].plaintext"
+done < <(query_result '.queryresult.pods[] | select(.subpods[0].plaintext != "") | .title')

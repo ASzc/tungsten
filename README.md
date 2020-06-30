@@ -46,9 +46,14 @@ When outputting to a terminal, the output is colourised.
 
 ## Install
 
-Tungsten requires the following packages: `curl`, `xmlstarlet`, and `bash`. Provided that these are installed, the script can be run in-place, or included in your PATH.
+Tungsten requires the following packages: `curl`, `jq`, and `bash`, as well as the POSIX `iconv` command, which is often provided by libc packages like `glibc`. Provided that these are installed, the script can be run in-place, or included in your PATH.
 
 ## Changelog
+
+### 2.0
+
+* Swap `xmlstarlet` dependency out for `jq` (JSON backend instead of XML). This avoids a class of bugs from XML handling.
+* Support for simple queries without an API Key. Thanks to @theblazehen
 
 ### 1.1
 *   Add XML un-escape to fix seeing things like `&amp;` in the results

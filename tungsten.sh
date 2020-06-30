@@ -32,6 +32,34 @@ error () {
 }
 
 #
+# Load stored API key
+#
+
+key_path="$HOME/.wolfram_api_key"
+key_pattern='[A-Z0-9]{6}-[A-Z0-9]{10}'
+
+if [ -f "$key_path" ]
+then
+    # Load the contents of $key_path file as API_KEY
+    API_KEY="$(<"$key_path")"
+    if ! [[ "$API_KEY" =~ $key_pattern ]]
+    then
+        error "WolframAlpha API key read from file '$key_path' doesn't match the validation pattern"
+        exit 2
+    fi
+
+elif [ -e "$key_path" ]
+then
+    error "WolframAlpha API key path '$key_path' exists, but isn't a file."
+    exit 3
+
+else
+    error "Querying without an API key. There may be incorrect / missing characters."
+    error "To query with an API key, add the key to $key_path as mentioned in the README"
+    API_KEY=""
+fi
+
+#
 # Read the query
 #
 
@@ -45,14 +73,20 @@ fi
 
 #
 # Perform the query
-#
-
-result="$(curl -sS -G --data-urlencode "format=plaintext" \
-	              --data-urlencode "output=XML" \
-		      --data-urlencode "type=full" \
-		      --data-urlencode "input=$query" \
-		      --header "referer: https://products.wolframalpha.com/api/explorer/" \
-                      "https://www.wolframalpha.com/input/apiExplorer.jsp" | iconv -f latin1 -t UTF-8)"
+if [[ -n "$API_KEY" ]]
+then
+    result="$(curl -sS -G --data-urlencode "appid=$API_KEY" \
+                          --data-urlencode "format=plaintext" \
+                          --data-urlencode "input=$query" \
+                          "https://api.wolframalpha.com/v2/query")"
+else
+    result="$(curl -sS -G --data-urlencode "format=plaintext" \
+                          --data-urlencode "output=XML" \
+                          --data-urlencode "type=full" \
+                          --data-urlencode "input=$query" \
+                          --header "referer: https://products.wolframalpha.com/api/explorer/" \
+                          "https://www.wolframalpha.com/input/apiExplorer.jsp" | iconv -f latin1 -t UTF-8)"
+fi
 
 #
 # Process the result of the query

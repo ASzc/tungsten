@@ -50,6 +50,10 @@ Tungsten requires the following packages: `curl`, `jq`, and `bash`, as well as t
 
 ## Changelog
 
+### 2.1
+
+* Handle null results gracefully. Thanks to @federicotorrielli
+
 ### 2.0
 
 * Swap `xmlstarlet` dependency out for `jq` (JSON backend instead of XML). This avoids a class of bugs from XML handling.

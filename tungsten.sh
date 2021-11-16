@@ -130,6 +130,13 @@ else
     titleformat='%s\n'
 fi
 
+# Handle "cannot iterate over null" jq error
+if [ "$(query_result '.queryresult.pods[0].subpods[0].plaintext')" == "null" ]
+then
+    error "WolframAlpha API returned no results for the given query"
+    exit 8
+fi
+
 # Print title+plaintext for each pod with text in it's subpod/plaintext child
 while read -r title
 do
